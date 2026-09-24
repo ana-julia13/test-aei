@@ -2,4 +2,6 @@ nbody
 *.mod
 *_osc.dat
 *_geo.dat
-*_elementos.png
+*_osc.png
+*_geo.png
+*_comparacao.png

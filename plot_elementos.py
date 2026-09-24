@@ -5,8 +5,10 @@ Uso:
     python3 plot_elementos.py Thebe Io        # so' os satelites escolhidos
     python3 plot_elementos.py Thebe --pasta resultados --tmax 200 --nao-mostrar
 
-Para cada satelite gera NOME_elementos.png com os elementos osculadores
-(azul) e geometricos (laranja) sobrepostos.
+Para cada satelite gera tres imagens:
+    NOME_osc.png         elementos osculadores (azul)
+    NOME_geo.png         elementos geometricos (laranja)
+    NOME_comparacao.png  os dois sobrepostos
 """
 import argparse
 import glob
@@ -38,22 +40,15 @@ def carrega(arquivo, tmax):
     return d
 
 
-def plota(nome, pasta, tmax, mostrar):
-    osc = carrega(os.path.join(pasta, f"{nome}_osc.dat"), tmax)
-    geo = carrega(os.path.join(pasta, f"{nome}_geo.dat"), tmax)
-    if osc is None and geo is None:
-        print(f"Nada encontrado para {nome} em {pasta}")
-        return
-
+def figura(nome, series, titulo, arquivo, mostrar):
+    """series: lista de (dados, cor, legenda)."""
     fig, axes = plt.subplots(3, 2, figsize=(13, 9), sharex=True)
     # coluna 1: a, e, i ; coluna 2: w, Om, M
     posicoes = [(0, 0), (1, 0), (2, 0), (0, 1), (1, 1), (2, 1)]
 
     for k, ((rotulo, angulo), (lin, col)) in enumerate(zip(ROTULOS, posicoes)):
         ax = axes[lin, col]
-        for dados, cor, legenda in [(osc, COR_OSC, "osculador"), (geo, COR_GEO, "geométrico")]:
-            if dados is None:
-                continue
+        for dados, cor, legenda in series:
             t, y = dados[:, 0], dados[:, k + 1]
             if angulo:
                 # pontos, para nao ligar 359° com 0° por uma linha vertical
@@ -71,16 +66,35 @@ def plota(nome, pasta, tmax, mostrar):
 
     axes[2, 0].set_xlabel("Tempo (dias)")
     axes[2, 1].set_xlabel("Tempo (dias)")
-    axes[0, 0].legend(loc="best", markerscale=6, frameon=False)
-    fig.suptitle(f"Elementos orbitais — {nome}", fontsize=14, fontweight="bold")
+    if len(series) > 1:
+        axes[0, 0].legend(loc="best", markerscale=6, frameon=False)
+    fig.suptitle(f"{titulo} — {nome}", fontsize=14, fontweight="bold")
     fig.tight_layout()
-
-    saida = os.path.join(pasta, f"{nome}_elementos.png")
-    fig.savefig(saida, dpi=200, bbox_inches="tight")
-    print(f"Salvo: {saida}")
+    fig.savefig(arquivo, dpi=200, bbox_inches="tight")
+    print(f"Salvo: {arquivo}")
     if mostrar:
         plt.show()
     plt.close(fig)
+
+
+def plota(nome, pasta, tmax, mostrar):
+    """Gera ate' 3 imagens: NOME_osc.png, NOME_geo.png e NOME_comparacao.png."""
+    osc = carrega(os.path.join(pasta, f"{nome}_osc.dat"), tmax)
+    geo = carrega(os.path.join(pasta, f"{nome}_geo.dat"), tmax)
+    if osc is None and geo is None:
+        print(f"Nada encontrado para {nome} em {pasta}")
+        return
+
+    base = os.path.join(pasta, nome)
+    if osc is not None:
+        figura(nome, [(osc, COR_OSC, "osculador")],
+               "Elementos orbitais osculadores", f"{base}_osc.png", mostrar)
+    if geo is not None:
+        figura(nome, [(geo, COR_GEO, "geométrico")],
+               "Elementos orbitais geométricos", f"{base}_geo.png", mostrar)
+    if osc is not None and geo is not None:
+        figura(nome, [(osc, COR_OSC, "osculador"), (geo, COR_GEO, "geométrico")],
+               "Osculadores × geométricos", f"{base}_comparacao.png", mostrar)
 
 
 def main():

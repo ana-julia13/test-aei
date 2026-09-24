@@ -24,7 +24,7 @@ python3 plot_elementos.py    # gráficos de todos os satélites (precisa de nump
 | `nbody.f90` | o código (forças, RA15, conversões de elementos, leitura do `.in`) |
 | `planetas.dat` | banco de planetas: `nome  GM(km³/s²)  R_eq(km)  J2  J4`. Para adicionar um planeta, acrescente uma linha. |
 | `simulacao.in` | exemplo de entrada (sistema de Júpiter do `ips_mas_pra_aei_jup.f`) |
-| `plot_elementos.py` | plota osculadores × geométricos |
+| `plot_elementos.py` | gera 3 imagens por satélite: `NOME_osc.png`, `NOME_geo.png` e `NOME_comparacao.png` |
 
 ## O arquivo `.in`
 
