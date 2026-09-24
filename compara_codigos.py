@@ -14,14 +14,13 @@ Uso (todos os arquivos sao opcionais; use os que tiver):
         --mercury Thebe.aei \
         --tmax 500 --alpha 0.4
 
-Gera:
-    NOME_codigos.png      os elementos dos tres codigos sobrepostos
-    NOME_diferencas.png   diferencas de cada codigo em relacao a' referencia
-                          (--ref nbody | nlsn | mercury; padrao: nbody)
-e imprime na tela a maior diferenca de cada elemento.
+Salva NOME_codigos.png com os elementos dos tres codigos sobrepostos
+(nao abre janela).
 """
 import argparse
 
+import matplotlib
+matplotlib.use("Agg")                # so' salva a imagem, sem abrir janela
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.ticker import ScalarFormatter
@@ -37,12 +36,12 @@ CORES = {"nbody": "#1f4fd6", "NLSN": "#d62728", "Mercury": "#1a9e3a"}
 ALPHA = 0.5
 
 ROTULOS = [
-    ("Semieixo $a$ (km)", "a (km)", False),
-    ("Excentricidade $e$", "e", False),
-    ("Inclinação $i$ (°)", "i (°)", False),
-    ("Pericentro $\\omega$ (°)", "ω (°)", True),
-    ("Nodo $\\Omega$ (°)", "Ω (°)", True),
-    ("Anomalia média $M$ (°)", "M (°)", True),
+    ("Semieixo $a$ (km)", False),
+    ("Excentricidade $e$", False),
+    ("Inclinação $i$ (°)", False),
+    ("Pericentro $\\omega$ (°)", True),
+    ("Nodo $\\Omega$ (°)", True),
+    ("Anomalia média $M$ (°)", True),
 ]
 POSICOES = [(0, 0), (1, 0), (2, 0), (0, 1), (1, 1), (2, 1)]
 
@@ -79,41 +78,6 @@ def le_mercury(arq):
     return d
 
 
-# ------------------------------------------------------------- comparacao
-def diferenca(dados, ref):
-    """Diferenca dados - ref nos tempos de 'dados'.
-
-    Usa os instantes em comum quando existem; senao interpola a referencia
-    (angulos sao desenrolados antes de interpolar)."""
-    t, tr = dados[:, 0], ref[:, 0]
-    tol = 1e-6 * max(1.0, np.abs(tr).max())
-    idx = np.searchsorted(tr, t)
-    idx = np.clip(idx, 1, len(tr) - 1)
-    viz = np.where(np.abs(tr[idx - 1] - t) < np.abs(tr[idx] - t), idx - 1, idx)
-    comum = np.abs(tr[viz] - t) < tol
-
-    if comum.sum() >= 10:
-        tt, a, b = t[comum], dados[comum], ref[viz[comum]]
-        interpolado = False
-    else:
-        dentro = (t >= tr[0]) & (t <= tr[-1])
-        tt, a = t[dentro], dados[dentro]
-        b = np.empty_like(a)
-        b[:, 0] = tt
-        for k in range(1, 7):
-            y = ref[:, k]
-            if ROTULOS[k - 1][2]:
-                y = np.degrees(np.unwrap(np.radians(y)))
-            b[:, k] = np.interp(tt, tr, y)
-        interpolado = True
-
-    dif = a[:, 1:] - b[:, 1:]
-    for k in range(6):
-        if ROTULOS[k][2]:
-            dif[:, k] = (dif[:, k] + 180.0) % 360.0 - 180.0
-    return tt, dif, interpolado
-
-
 # ------------------------------------------------------------------ figuras
 def eixos_base(titulo):
     fig, axes = plt.subplots(3, 2, figsize=(13, 9), sharex=True)
@@ -126,9 +90,9 @@ def eixos_base(titulo):
     return fig, axes
 
 
-def figura_elementos(nome, series, arquivo, mostrar, alpha=ALPHA):
+def figura_elementos(nome, series, arquivo, alpha=ALPHA):
     fig, axes = eixos_base(f"Elementos osculadores — {nome}")
-    for k, ((rotulo, _, angulo), (lin, col)) in enumerate(zip(ROTULOS, POSICOES)):
+    for k, ((rotulo, angulo), (lin, col)) in enumerate(zip(ROTULOS, POSICOES)):
         ax = axes[lin, col]
         for cod, d in series.items():
             if angulo:
@@ -148,41 +112,6 @@ def figura_elementos(nome, series, arquivo, mostrar, alpha=ALPHA):
     fig.tight_layout()
     fig.savefig(arquivo, dpi=200, bbox_inches="tight")
     print(f"Salvo: {arquivo}")
-    if mostrar:
-        plt.show()
-    plt.close(fig)
-
-
-def figura_diferencas(nome, series, ref, arquivo, mostrar, alpha=ALPHA):
-    outros = [c for c in series if c != ref]
-    if not outros:
-        return
-    fig, axes = eixos_base(f"Diferenças em relação ao {ref} — {nome}")
-    print(f"\nMaior |diferença| em relação ao {ref}:")
-    print(f"{'':10s}" + "".join(f"{r[1]:>14s}" for r in ROTULOS))
-    algum_interp = False
-    for cod in outros:
-        tt, dif, interp = diferenca(series[cod], series[ref])
-        algum_interp = algum_interp or interp
-        aviso = "  <- INTERPOLADO (passos de saida diferentes)" if interp else ""
-        print(f"{cod:10s}" + "".join(f"{np.nanmax(np.abs(dif[:, k])):14.4e}" for k in range(6)) + aviso)
-        for k, (lin, col) in enumerate(POSICOES):
-            axes[lin, col].plot(tt, dif[:, k], lw=0.8, color=CORES[cod], alpha=alpha,
-                                label=f"{cod} − {ref}")
-    for k, (lin, col) in enumerate(POSICOES):
-        axes[lin, col].set_ylabel("Δ" + ROTULOS[k][1])
-        axes[lin, col].axhline(0.0, color="0.5", lw=0.6)
-    leg = axes[0, 0].legend(loc="best", frameon=False)
-    for h in getattr(leg, "legend_handles", None) or leg.legendHandles:
-        h.set_alpha(1.0)
-    fig.tight_layout()
-    fig.savefig(arquivo, dpi=200, bbox_inches="tight")
-    if algum_interp:
-        print("AVISO: interpolar elementos que oscilam rapido cria diferencas falsas.\n"
-              "       Para comparar de verdade, rode com o mesmo passo de saida nos dois codigos.")
-    print(f"Salvo: {arquivo}")
-    if mostrar:
-        plt.show()
     plt.close(fig)
 
 
@@ -193,11 +122,8 @@ def main():
     p.add_argument("--nlsn", nargs=2, metavar=("AEI", "ANG"), help="saida3.dat saida4.dat do NLSN")
     p.add_argument("--nbody", metavar="OSC", help="NOME_osc.dat do nbody")
     p.add_argument("--mercury", metavar="AEI", help="NOME.aei do Mercury")
-    p.add_argument("--ref", default="nbody", choices=["nbody", "nlsn", "mercury"],
-                   help="codigo de referencia para as diferencas (padrao: nbody)")
     p.add_argument("--tmax", type=float, default=None, help="tempo maximo no grafico (dias)")
     p.add_argument("--alpha", type=float, default=ALPHA, help="transparencia das curvas, 0 a 1 (padrao: 0.5)")
-    p.add_argument("--nao-mostrar", action="store_true", help="so' salva os PNG")
     a = p.parse_args()
 
     series = {}
@@ -213,13 +139,7 @@ def main():
     if a.tmax is not None:
         series = {c: d[d[:, 0] <= a.tmax] for c, d in series.items()}
 
-    ref = {"nbody": "nbody", "nlsn": "NLSN", "mercury": "Mercury"}[a.ref]
-    if ref not in series:
-        ref = next(iter(series))
-
-    mostrar = not a.nao_mostrar
-    figura_elementos(a.nome, series, f"{a.nome}_codigos.png", mostrar, a.alpha)
-    figura_diferencas(a.nome, series, ref, f"{a.nome}_diferencas.png", mostrar, a.alpha)
+    figura_elementos(a.nome, series, f"{a.nome}_codigos.png", a.alpha)
 
 
 if __name__ == "__main__":

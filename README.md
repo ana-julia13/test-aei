@@ -72,10 +72,8 @@ python3 compara_codigos.py --nome Thebe --nbody Thebe_osc.dat \
     --nlsn saida3.dat saida4.dat --mercury Thebe.aei --tmax 500
 ```
 
-Gera `Thebe_codigos.png` (elementos sobrepostos) e `Thebe_diferencas.png`
-(diferença de cada código em relação ao nbody; mude com `--ref`) e imprime a maior
-diferença de cada elemento. Use o mesmo passo de saída nos códigos: se os tempos
-não coincidem, o script interpola e as diferenças ficam infladas.
+Salva `Thebe_codigos.png` com os elementos dos três códigos sobrepostos (curvas
+semitransparentes; mude com `--alpha`). Não abre janela.
 
 ## Física e unidades
 
