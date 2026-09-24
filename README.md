@@ -26,6 +26,7 @@ python3 plot_elementos.py    # gráficos de todos os satélites (precisa de nump
 | `simulacao.in` | exemplo de entrada (sistema de Júpiter do `ips_mas_pra_aei_jup.f`) |
 | `plot_elementos.py` | gera 3 imagens por satélite: `NOME_osc.png`, `NOME_geo.png` e `NOME_comparacao.png` |
 | `compara_codigos.py` | compara os osculadores do nbody, do NLSN (`saida3.dat`+`saida4.dat`) e do Mercury (`.aei`) |
+| `angulos_ressonantes.py` | ângulos críticos de uma ressonância p:q de ordem 1 a 4 (tabelas B.4, B.8, B.12, B.16 de Murray & Dermott) |
 
 ## O arquivo `.in`
 
@@ -74,6 +75,17 @@ python3 compara_codigos.py --nome Thebe --nbody Thebe_osc.dat \
 
 Salva `Thebe_codigos.png` com os elementos dos três códigos sobrepostos (curvas
 semitransparentes; mude com `--alpha`). Não abre janela.
+
+## Ângulos ressonantes
+
+```bash
+python3 angulos_ressonantes.py 73:69 Thebe Io            # geo e osc
+python3 angulos_ressonantes.py 2:1 Metis Io --tipo geo --tmax 2000
+python3 angulos_ressonantes.py 73:69 Thebe Io --ids 4D4.1 4D4.9
+```
+
+A ordem (p − q) escolhe a tabela automaticamente; o satélite interno é o de menor
+semieixo. Salva `ress_P_Q_INTERNO_EXTERNO_geo.png` / `_osc.png`.
 
 ## Física e unidades
 
