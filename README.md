@@ -25,6 +25,7 @@ python3 plot_elementos.py    # gráficos de todos os satélites (precisa de nump
 | `planetas.dat` | banco de planetas: `nome  GM(km³/s²)  R_eq(km)  J2  J4`. Para adicionar um planeta, acrescente uma linha. |
 | `simulacao.in` | exemplo de entrada (sistema de Júpiter do `ips_mas_pra_aei_jup.f`) |
 | `plot_elementos.py` | gera 3 imagens por satélite: `NOME_osc.png`, `NOME_geo.png` e `NOME_comparacao.png` |
+| `compara_codigos.py` | compara os osculadores do nbody, do NLSN (`saida3.dat`+`saida4.dat`) e do Mercury (`.aei`) |
 
 ## O arquivo `.in`
 
@@ -63,6 +64,18 @@ Esse é o mesmo formato do `sat1_geo.dat` do `osc_geo.f90`. Os elementos
 osculadores usam μ = G(M + m); os geométricos usam G·M, J2 e J4 do planeta (J6 = 0),
 como no `geo` original. O programa também mostra na tela o erro relativo da
 energia, para controlar a qualidade da integração.
+
+## Comparar com NLSN e Mercury
+
+```bash
+python3 compara_codigos.py --nome Thebe --nbody Thebe_osc.dat \
+    --nlsn saida3.dat saida4.dat --mercury Thebe.aei --tmax 500
+```
+
+Gera `Thebe_codigos.png` (elementos sobrepostos) e `Thebe_diferencas.png`
+(diferença de cada código em relação ao nbody; mude com `--ref`) e imprime a maior
+diferença de cada elemento. Use o mesmo passo de saída nos códigos: se os tempos
+não coincidem, o script interpola e as diferenças ficam infladas.
 
 ## Física e unidades
 
