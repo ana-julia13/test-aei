@@ -1,0 +1,20 @@
+! =====================================================================
+!  Banco de dados de planetas para o nbody
+!
+!  Formato (uma linha por planeta, colunas separadas por espacos):
+!    nome[/apelido/...]   GM(km^3/s^2)   R_eq(km)   J2   J4
+!
+!  - J2 e J4 sao NAO normalizados e referidos ao raio R_eq da mesma linha
+!    (se trocar o raio de referencia, J2 e J4 mudam junto!).
+!  - O nome e' comparado sem diferenciar maiusculas/minusculas; use '/'
+!    para dar varios nomes ao mesmo planeta.
+!  - Para adicionar um planeta, e' so' acrescentar uma linha.
+!  - Tudo depois de '!' e' comentario.
+! =====================================================================
+!
+! nome                     GM              R_eq        J2                 J4
+Jupiter/Júpiter/Jup        126686531.9     71492.0     1.46965063d-2     -5.8660850d-4   ! GM JPL/Jacobson; J2,J4 Juno (Iess et al. 2018)
+Saturno/Saturn/Sat         37931206.234    60330.0     1.6290573d-2      -9.35314d-4     ! Iess et al. 2019
+Urano/Uranus               5793951.3       25559.0     3.51068d-3        -3.417d-5       ! Jacobson 2014
+Netuno/Neptune/Nep         6836527.1       25225.0     3.40843d-3        -3.340d-5       ! Jacobson 2009; mesmo GM do osc_geo.f90 (inclui Triton; so o planeta: 6835099.5)
+Terra/Earth                398600.4418     6378.137    1.08262668d-3     -1.6196d-6      ! EGM (valores aproximados)

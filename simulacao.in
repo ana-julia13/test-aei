@@ -1,0 +1,40 @@
+! =====================================================================
+!  Arquivo de entrada do nbody
+!  - linhas "chave = valor"; tudo depois de '!' ou '#' e' comentario
+!  - maiusculas/minusculas nao importam nas chaves
+! =====================================================================
+
+! ---------------- planeta central ----------------
+! Nome procurado em planetas.dat (GM, raio, J2 e J4 vem de la').
+planeta = Jupiter
+
+! Opcional: sobrescrever valores do banco (ou usar "planeta = personalizado")
+! gm_planeta   = 126686531.9     ! km^3/s^2
+! raio_planeta = 71492.0         ! km  (raio de referencia de J2 e J4)
+! j2           = 1.46965063d-2
+! j4           = -5.8660850d-4
+
+! ---------------- integracao ----------------
+tempo_final = 1000.0        ! dias
+passo_saida = 0.05          ! dias (intervalo entre linhas nos .dat)
+precisao    = 12            ! LL do RA15 (tolerancia 10^-LL); 12 como no codigo original
+
+! ---------------- saida ----------------
+saida_osculadores = sim     ! gera NOME_osc.dat
+saida_geometricos = sim     ! gera NOME_geo.dat
+pasta_saida       = .       ! pasta onde os .dat sao gravados (precisa existir)
+
+! ---------------- satelites ----------------
+! Elementos osculadores PLANETOCENTRICOS no instante t = 0, no
+! referencial do EQUADOR do planeta (o eixo z e' o eixo de rotacao).
+! unidade_massa: kg | razao (m/M_planeta) | gm (G*m em km^3/s^2)
+unidade_massa = kg
+
+satelites:
+! nome        massa        a(km)                e                     i(deg)                  w(deg)               Om(deg)              M(deg)
+Metis         3.745e16     128878.617426867     6.5093124855e-3       6.507764899349653e-3    98.23331084505354    248.2218057692264    353.7201946091936
+Adrastea      2.1e15       129874.3305813860    7.272153643607772e-3  6.1493567577236e-3      168.6700661859509    24.97496457817022    352.7212844331575
+Amalthea      2.465e18     181992.8981667377    2.52305842352873e-3   0.376071978826610       247.0049090802162    17.56636845769625    295.564576197859
+Thebe         4.517e17     222372.0             1.8270555e-2          1.067732994448416       38.43073533488585    326.8019124543780    292.1619181202661
+Io            8.927e22     351740.64            3.784460371133501e-3  3.629480809739728e-2    281.8662000515845    30.89894265084308    238.1065374210917
+fim
