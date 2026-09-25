@@ -110,39 +110,6 @@ contains
     end do
   end subroutine force
 
-  ! Energia total (vezes G) no referencial baricentrico. So' serve para
-  ! monitorar a qualidade da integracao.
-  function energia(x, v) result(en)
-    real(dp), intent(in) :: x(:), v(:)
-    real(dp) :: en, vp(3), vb(3), mtot, r, z2, p2, p4, d(3)
-    integer  :: i, j, ki, kj
-
-    mtot = gmp + sum(gms)
-    vp = 0.0_dp
-    do i = 1, nsat
-      ki = 3*(i-1)
-      vp = vp - gms(i)*v(ki+1:ki+3)
-    end do
-    vp = vp/mtot
-
-    en = 0.5_dp*gmp*sum(vp*vp)
-    do i = 1, nsat
-      ki = 3*(i-1)
-      vb = v(ki+1:ki+3) + vp
-      en = en + 0.5_dp*gms(i)*sum(vb*vb)
-      r  = sqrt(sum(x(ki+1:ki+3)**2))
-      z2 = (x(ki+3)/r)**2
-      p2 = 0.5_dp*(3.0_dp*z2 - 1.0_dp)
-      p4 = (35.0_dp*z2*z2 - 30.0_dp*z2 + 3.0_dp)/8.0_dp
-      en = en - gmp*gms(i)/r*(1.0_dp - j2*p2/r**2 - j4*p4/r**4)
-      do j = i+1, nsat
-        kj = 3*(j-1)
-        d  = x(kj+1:kj+3) - x(ki+1:ki+3)
-        en = en - gms(i)*gms(j)/sqrt(sum(d*d))
-      end do
-    end do
-  end function energia
-
 end module forcas
 
 !-----------------------------------------------------------------------
@@ -910,7 +877,7 @@ program nbody
   real(dp), allocatable :: x(:), v(:), rr(:,:), vv(:,:)
   integer,  allocatable :: u_osc(:), u_geo(:)
   logical,  allocatable :: avisado(:), faz_geo(:), faz_osc(:)
-  real(dp) :: conv_gm, t, tm, xl, e0, e1, emax, en
+  real(dp) :: conv_gm, t, tm, xl
   real(dp) :: a, e, inc, w, om, am, st(6), mu
   integer  :: i, k, nv, npassos, ierr, iel
 
@@ -974,7 +941,6 @@ program nbody
   end if
   write(*,'(a,f16.4,a)') ' Tempo final        : ', tempo_final, ' dias'
   write(*,'(a,f16.8,a)') ' Passo de saida     : ', passo_saida, ' dias'
-  write(*,'(a,i0)')      ' Precisao (LL RA15) : ', precisao
 
   ! --- abre arquivos de saida
   allocate(u_osc(nsat), u_geo(nsat))
@@ -983,9 +949,7 @@ program nbody
   faz_geo = saida_geo .and. grava
   do i = 1, nsat
     if (faz_geo(i) .and. el_in(3,i) >= 90.0_dp) then
-      faz_geo(i) = .false.
-      write(*,'(a,a,a)') ' AVISO: ', trim(nome_sat(i)), ' e'' retrogrado (i > 90 graus): Renner & Sicardy '// &
-                         'nao se aplica; so'' gero o _osc.dat'
+      faz_geo(i) = .false.           ! retrogrado: so' gera o _osc.dat
     end if
   end do
   do i = 1, nsat
@@ -1008,8 +972,6 @@ program nbody
   end do
 
   ! --- integracao
-  e0 = energia(x, v)
-  emax = 0.0_dp
   t = 0.0_dp
   call escreve_saida()
 
@@ -1034,20 +996,11 @@ program nbody
     end do
 
     call escreve_saida()
-    if (e0 /= 0.0_dp) then
-      en = energia(x, v)
-      emax = max(emax, abs((en - e0)/e0))
-    end if
 
     if (mod(iel, max(1, npassos/20)) == 0) &
       write(*,'(a,f7.1,a,f16.4,a)') '   ', 100.0_dp*iel/npassos, '%   t =', t, ' dias'
   end do
 
-  if (e0 /= 0.0_dp) then
-    e1 = energia(x, v)
-    write(*,'(a,es10.3)') ' Erro relativo final da energia : ', abs((e1 - e0)/e0)
-    write(*,'(a,es10.3)') ' Erro relativo maximo da energia: ', emax
-  end if
   call fecha_e_para()
 
 contains

@@ -65,8 +65,8 @@ tempo(dias)  a(km)  e  inc(deg)  w(deg)  om(deg)  M(deg)
 
 Esse é o mesmo formato do `sat1_geo.dat` do `osc_geo.f90`. Os elementos
 osculadores usam μ = G(M + m); os geométricos usam G·M, J2 e J4 do planeta (J6 = 0),
-como no `geo` original. O programa também mostra na tela o erro relativo da
-energia, para controlar a qualidade da integração.
+como no `geo` original. Satélites retrógrados (i > 90°) só geram o `_osc.dat`,
+porque o método de Renner & Sicardy não se aplica a eles.
 
 ## Comparar com NLSN e Mercury
 
