@@ -935,8 +935,8 @@ program nbody
   do i = 1, nsat
     if (saida_geo .and. el_in(3,i) >= 90.0_dp) then
       faz_geo(i) = .false.
-      write(*,'(a,a,a)') ' AVISO: ', trim(nome_sat(i)), ' e'' retrogrado (i > 90 graus): nao ha'' '// &
-                         'elementos geometricos (Renner & Sicardy); so'' gero o _osc.dat'
+      write(*,'(a,a,a)') ' AVISO: ', trim(nome_sat(i)), ' e'' retrogrado (i > 90 graus): Renner & Sicardy '// &
+                         'nao se aplica; so'' gero o _osc.dat'
     end if
   end do
   do i = 1, nsat
