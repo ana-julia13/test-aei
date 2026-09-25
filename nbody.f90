@@ -868,7 +868,7 @@ program nbody
   character(len=256) :: arq_in, arq
   real(dp), allocatable :: x(:), v(:), rr(:,:), vv(:,:)
   integer,  allocatable :: u_osc(:), u_geo(:)
-  logical,  allocatable :: avisado(:)
+  logical,  allocatable :: avisado(:), faz_geo(:)
   real(dp) :: conv_gm, t, tm, xl, e0, e1, emax, en
   real(dp) :: a, e, inc, w, om, am, st(6), mu
   integer  :: i, k, nv, npassos, ierr, iel
@@ -901,7 +901,7 @@ program nbody
 
   ! --- condicoes iniciais (elementos osculadores planetocentricos)
   nv = 3*nsat
-  allocate(x(nv), v(nv), rr(3,nsat), vv(3,nsat), avisado(nsat))
+  allocate(x(nv), v(nv), rr(3,nsat), vv(3,nsat), avisado(nsat), faz_geo(nsat))
   avisado = .false.
   do i = 1, nsat
     k = 3*(i-1)
@@ -930,6 +930,15 @@ program nbody
 
   ! --- abre arquivos de saida
   allocate(u_osc(nsat), u_geo(nsat))
+  ! Renner & Sicardy vale so' para orbitas diretas (i < 90 graus)
+  faz_geo = saida_geo
+  do i = 1, nsat
+    if (saida_geo .and. el_in(3,i) >= 90.0_dp) then
+      faz_geo(i) = .false.
+      write(*,'(a,a,a)') ' AVISO: ', trim(nome_sat(i)), ' e'' retrogrado (i > 90 graus): nao ha'' '// &
+                         'elementos geometricos (Renner & Sicardy); so'' gero o _osc.dat'
+    end if
+  end do
   do i = 1, nsat
     if (saida_osc) then
       arq = trim(pasta_saida)//'/'//trim(nome_sat(i))//'_osc.dat'
@@ -939,7 +948,7 @@ program nbody
       write(u_osc(i),'(a)') '#  tempo(dias)          a(km)                 e                  ' // &
                             'inc(deg)       w(deg)        om(deg)       M(deg)'
     end if
-    if (saida_geo) then
+    if (faz_geo(i)) then
       arq = trim(pasta_saida)//'/'//trim(nome_sat(i))//'_geo.dat'
       open(newunit=u_geo(i), file=trim(arq), status='replace')
       write(u_geo(i),'(a)') '# Elementos GEOMETRICOS (Renner & Sicardy 2006) - '//trim(nome_sat(i))// &
@@ -1009,7 +1018,7 @@ contains
         end if
         write(u_osc(j), 100) t, a*raio_km, e, inc*rad2deg, w*rad2deg, om*rad2deg, am*rad2deg
       end if
-      if (saida_geo) then
+      if (faz_geo(j)) then
         call geo(gmp, 1.0_dp, j2, j4, 0.0_dp, st, a, e, inc, w, om, am)
         write(u_geo(j), 100) t, a*raio_km, e, inc*rad2deg, w*rad2deg, om*rad2deg, am*rad2deg
       end if
@@ -1021,7 +1030,7 @@ contains
     integer :: j
     do j = 1, nsat
       if (saida_osc) close(u_osc(j))
-      if (saida_geo) close(u_geo(j))
+      if (faz_geo(j)) close(u_geo(j))
     end do
     write(*,'(a)') ' Fim.'
     stop
