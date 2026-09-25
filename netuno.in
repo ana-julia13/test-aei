@@ -14,6 +14,8 @@ precisao    = 12
 saida_osculadores = sim
 saida_geometricos = sim
 pasta_saida       = .
+! salvar = Naiad Thalassa  ! so' esses satelites geram .dat (padrao: todos).
+!                          ! Os outros continuam na integracao normalmente.
 
 ! ---------------- satelites ----------------
 ! Elementos osculadores planetocentricos em t = 0, no equador de Netuno.

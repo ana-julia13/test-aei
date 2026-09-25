@@ -50,6 +50,8 @@ fim
 
 * Os elementos iniciais são **osculadores, planetocêntricos, no plano do equador do planeta**.
 * Massa `0` é permitida (partícula-teste).
+* `salvar = Thebe Io` grava `.dat` só desses satélites; os outros continuam na
+  integração (perturbando normalmente), só não geram arquivos.
 * Dá para sobrescrever os valores do banco no próprio `.in` (`gm_planeta`,
   `raio_planeta`, `j2`, `j4`), ou usar `planeta = personalizado` e dar todos eles.
 

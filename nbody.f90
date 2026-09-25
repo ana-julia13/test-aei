@@ -646,6 +646,8 @@ module leitura
   character(len=256) :: arq_planetas = 'planetas.dat'
   character(len=256) :: pasta_saida  = '.'
   character(len=16)  :: unidade_massa = 'kg'
+  character(len=512) :: lista_salvar = ''     ! satelites com saida (vazio = todos)
+  logical, allocatable :: grava(:)
   real(dp) :: tempo_final = -1.0_dp, passo_saida = -1.0_dp
   integer  :: precisao = 12
   logical  :: saida_osc = .true., saida_geo = .true.
@@ -740,6 +742,8 @@ contains
           saida_geo = sim_ou_nao(valor)
         case ('pasta_saida')
           pasta_saida = valor
+        case ('salvar')
+          lista_salvar = valor
         case ('unidade_massa')
           unidade_massa = minusculo(valor)
         case ('gm_planeta')
@@ -786,8 +790,45 @@ contains
     allocate(nome_sat(nsat), massa_in(nsat), el_in(6, nsat), gms(nsat))
     nome_sat = tmp_nome(1:nsat)
     massa_in = tmp_el(1, 1:nsat)
+    call escolhe_saida()
     el_in    = tmp_el(2:7, 1:nsat)
   end subroutine le_entrada
+
+  ! Quais satelites tem arquivos de saida: "salvar = Naiad Thalassa"
+  ! (nomes separados por espaco ou virgula). Sem a chave, ou com
+  ! "salvar = todos", grava todos. Os outros continuam sendo integrados.
+  subroutine escolhe_saida()
+    character(len=512) :: resto
+    character(len=64)  :: um
+    integer :: k, i
+    logical :: achou
+
+    allocate(grava(nsat))
+    resto = lista_salvar
+    do k = 1, len_trim(resto)
+      if (resto(k:k) == ',') resto(k:k) = ' '
+    end do
+    resto = adjustl(resto)
+    if (len_trim(resto) == 0 .or. minusculo(trim(resto)) == 'todos') then
+      grava = .true.
+      return
+    end if
+
+    grava = .false.
+    do while (len_trim(resto) > 0)
+      k = index(resto, ' ')
+      um = resto(1:k-1)
+      resto = adjustl(resto(k:))
+      achou = .false.
+      do i = 1, nsat
+        if (minusculo(trim(nome_sat(i))) == minusculo(trim(um))) then
+          grava(i) = .true.
+          achou = .true.
+        end if
+      end do
+      if (.not. achou) call erro('"salvar": satelite "'//trim(um)//'" nao esta'' no bloco satelites')
+    end do
+  end subroutine escolhe_saida
 
   ! Procura o planeta em arq_planetas. Formato de cada linha:
   !   nome[/apelido/...]   GM(km^3/s^2)   R_eq(km)   J2   J4
@@ -868,7 +909,7 @@ program nbody
   character(len=256) :: arq_in, arq
   real(dp), allocatable :: x(:), v(:), rr(:,:), vv(:,:)
   integer,  allocatable :: u_osc(:), u_geo(:)
-  logical,  allocatable :: avisado(:), faz_geo(:)
+  logical,  allocatable :: avisado(:), faz_geo(:), faz_osc(:)
   real(dp) :: conv_gm, t, tm, xl, e0, e1, emax, en
   real(dp) :: a, e, inc, w, om, am, st(6), mu
   integer  :: i, k, nv, npassos, ierr, iel
@@ -901,7 +942,7 @@ program nbody
 
   ! --- condicoes iniciais (elementos osculadores planetocentricos)
   nv = 3*nsat
-  allocate(x(nv), v(nv), rr(3,nsat), vv(3,nsat), avisado(nsat), faz_geo(nsat))
+  allocate(x(nv), v(nv), rr(3,nsat), vv(3,nsat), avisado(nsat), faz_geo(nsat), faz_osc(nsat))
   avisado = .false.
   do i = 1, nsat
     k = 3*(i-1)
@@ -924,6 +965,13 @@ program nbody
     write(*,'(3x,a16,a,es12.5,a,f14.3,a)') nome_sat(i), '  m/M =', gms(i)/gmp, &
       '   a =', el_in(1,i), ' km'
   end do
+  if (.not. all(grava)) then
+    write(*,'(a)', advance='no') ' Salvando so''       :'
+    do i = 1, nsat
+      if (grava(i)) write(*,'(1x,a)', advance='no') trim(nome_sat(i))
+    end do
+    write(*,*)
+  end if
   write(*,'(a,f16.4,a)') ' Tempo final        : ', tempo_final, ' dias'
   write(*,'(a,f16.8,a)') ' Passo de saida     : ', passo_saida, ' dias'
   write(*,'(a,i0)')      ' Precisao (LL RA15) : ', precisao
@@ -931,16 +979,17 @@ program nbody
   ! --- abre arquivos de saida
   allocate(u_osc(nsat), u_geo(nsat))
   ! Renner & Sicardy vale so' para orbitas diretas (i < 90 graus)
-  faz_geo = saida_geo
+  faz_osc = saida_osc .and. grava
+  faz_geo = saida_geo .and. grava
   do i = 1, nsat
-    if (saida_geo .and. el_in(3,i) >= 90.0_dp) then
+    if (faz_geo(i) .and. el_in(3,i) >= 90.0_dp) then
       faz_geo(i) = .false.
       write(*,'(a,a,a)') ' AVISO: ', trim(nome_sat(i)), ' e'' retrogrado (i > 90 graus): Renner & Sicardy '// &
                          'nao se aplica; so'' gero o _osc.dat'
     end if
   end do
   do i = 1, nsat
-    if (saida_osc) then
+    if (faz_osc(i)) then
       arq = trim(pasta_saida)//'/'//trim(nome_sat(i))//'_osc.dat'
       open(newunit=u_osc(i), file=trim(arq), status='replace')
       write(u_osc(i),'(a)') '# Elementos OSCULADORES planetocentricos - '//trim(nome_sat(i))// &
@@ -1009,7 +1058,7 @@ contains
       kk = 3*(j-1)
       st(1:3) = x(kk+1:kk+3)
       st(4:6) = v(kk+1:kk+3)
-      if (saida_osc) then
+      if (faz_osc(j)) then
         call cart_para_osc(gmp + gms(j), st(1:3), st(4:6), a, e, inc, w, om, am, ie)
         if (ie /= 0 .and. .not. avisado(j)) then
           write(*,'(a,a,a,f16.6)') ' AVISO: orbita de ', trim(nome_sat(j)), &
@@ -1029,7 +1078,7 @@ contains
   subroutine fecha_e_para()
     integer :: j
     do j = 1, nsat
-      if (saida_osc) close(u_osc(j))
+      if (faz_osc(j)) close(u_osc(j))
       if (faz_geo(j)) close(u_geo(j))
     end do
     write(*,'(a)') ' Fim.'

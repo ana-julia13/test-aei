@@ -23,6 +23,8 @@ precisao    = 12            ! LL do RA15 (tolerancia 10^-LL); 12 como no codigo 
 saida_osculadores = sim     ! gera NOME_osc.dat
 saida_geometricos = sim     ! gera NOME_geo.dat
 pasta_saida       = .       ! pasta onde os .dat sao gravados (precisa existir)
+! salvar = Thebe Io         ! so' esses satelites geram .dat (padrao: todos).
+!                           ! Os outros continuam na integracao normalmente.
 
 ! ---------------- satelites ----------------
 ! Elementos osculadores PLANETOCENTRICOS no instante t = 0, no
