@@ -26,6 +26,7 @@ python3 plot_elementos.py    # gráficos de todos os satélites (precisa de nump
 | `simulacao.in` | exemplo de entrada (sistema de Júpiter do `ips_mas_pra_aei_jup.f`) |
 | `plot_elementos.py` | gera 3 imagens por satélite: `NOME_osc.png`, `NOME_geo.png` e `NOME_comparacao.png` |
 | `compara_codigos.py` | compara os osculadores do nbody, do NLSN (`saida3.dat`+`saida4.dat`) e do Mercury (`.aei`) |
+| `compara_spice.py` | compara os osculadores do nbody (`NOME_osc.dat`) com os do SPICE (`elementos_NOME.csv` do `elementos_spice.py`) |
 | `angulos_ressonantes.py` | ângulos críticos de uma ressonância p:q de ordem 1 a 4 (tabelas B.4, B.8, B.12, B.16 de Murray & Dermott) |
 
 ## O arquivo `.in`
@@ -103,3 +104,18 @@ semieixo. Salva `ress_P_Q_INTERNO_EXTERNO_geo.png` / `_osc.png`.
 * A rotina `geo` dá resultados idênticos ao `osc_geo.f90`.
 * A aceleração de J2/J4 confere com o gradiente numérico do potencial.
 * A energia se conserva em ~1e-14 (1000 dias, 5 satélites).
+
+## Comparar com o SPICE
+
+```bash
+python3 compara_spice.py                          # todos os NOME_osc.dat que tem CSV do SPICE
+python3 compara_spice.py Thebe Io --tmax 100 --pasta-spice saida_elementos
+```
+
+Lê `NOME_osc.dat` (nbody) e `elementos_NOME.csv` (gerado pelo `elementos_spice.py`)
+e salva `NOME_spice.png` (os 6 elementos sobrepostos: nbody em azul, SPICE em
+vermelho) e `NOME_spice_dif.png` (nbody − SPICE, com o SPICE interpolado nos
+tempos do nbody). O t = 0 do nbody é a primeira linha do CSV (a época `INICIO`);
+use `--epoca-et` se for outra. Use `FRAME = "EQUADOR_JUPITER"` e
+`SOMAR_GM_LUA = True` no `elementos_spice.py`, para ficar no mesmo referencial e
+com o mesmo μ do nbody.
