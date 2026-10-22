@@ -13,11 +13,22 @@ com mu = GM_planeta + GM_lua, entao o nbody reconstroi exatamente o estado
 do SPICE em t = 0. O frame do CSV tem que ser o EQUADOR_JUPITER (o nbody
 poe o J2 no eixo z).
 
+Sol (--kernels): o nbody e' jovicentrico, entao visto de Jupiter o Sol
+tambem "orbita" Jupiter (a ~ 5.2 UA, periodo de 11.86 anos). Colocado na
+lista de satelites, o termo indireto do nbody faz Jupiter cair em direcao
+ao Sol e cada lua sente so' a mare solar, como na efemeride real. Com
+--kernels o script carrega os kernels (os mesmos do elementos_spice.py; e'
+preciso um SPK planetario, como de440s.bsp, alem do jup365.bsp), pega o
+estado do Sol relativo a Jupiter na epoca do CSV, no mesmo frame, e o
+acrescenta ao .in. A linha "salvar" deixa o Sol fora dos arquivos de saida.
+
 Uso:
     python3 spice_para_in.py saida_elementos/estados_iniciais.csv
     python3 spice_para_in.py estados_iniciais.csv -o jupiter_spice.in --tempo-final 365 --passo 0.01
+    python3 spice_para_in.py estados_iniciais.csv --kernels /caminho/juice_crema_5_1_150la.tm
 """
 import argparse
+import os
 
 import numpy as np
 
@@ -86,6 +97,47 @@ def le_csv(arq):
     return info, luas
 
 
+# -------------------------------------------------------------------- Sol
+def carrega_kernels(kernels):
+    """furnsh de cada kernel; meta-kernels sao carregados da propria pasta,
+    pois os caminhos dentro deles costumam ser relativos (igual ao
+    elementos_spice.py)."""
+    import spiceypy as spice
+    pasta_atual = os.getcwd()
+    for k in kernels:
+        k = os.path.abspath(k)
+        os.chdir(os.path.dirname(k))
+        try:
+            spice.furnsh(os.path.basename(k))
+        finally:
+            os.chdir(pasta_atual)
+
+
+def matriz_frame(frame, et):
+    """J2000 -> frame do CSV (mesma construcao do elementos_spice.py)."""
+    import spiceypy as spice
+    if frame == "J2000":
+        return np.eye(3)
+    if frame != "EQUADOR_JUPITER":
+        raise ValueError(f"frame desconhecido: {frame}")
+    polo = spice.pxform("IAU_JUPITER", "J2000", et)[:, 2].copy()
+    nodo = spice.ucrss([0.0, 0.0, 1.0], polo)
+    y = spice.ucrss(polo, nodo)
+    return np.array([nodo, y, polo])
+
+
+def estado_sol(kernels, info, centro="JUPITER"):
+    """(GM, r, v) do Sol relativo a Jupiter na epoca e no frame do CSV."""
+    import spiceypy as spice
+    carrega_kernels(kernels)
+    et = float(info["et_tdb_s"])
+    s, _ = spice.spkezr("SUN", et, "J2000", "NONE", centro)
+    R = matriz_frame(info.get("frame", "EQUADOR_JUPITER"), et)
+    gm = spice.bodvrd("SUN", "GM", 1)[1][0]
+    spice.kclear()
+    return gm, R @ np.asarray(s[:3]), R @ np.asarray(s[3:])
+
+
 # ------------------------------------------------------------------- main
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -95,12 +147,19 @@ def main():
     p.add_argument("--planeta", default="Jupiter", help="nome em planetas.dat (raio, J2, J4)")
     p.add_argument("--tempo-final", type=float, default=365.0, help="dias (padrao: 365)")
     p.add_argument("--passo", type=float, default=0.01, help="passo de saida em dias (padrao: 0.01)")
+    p.add_argument("--kernels", nargs="+", metavar="KERNEL",
+                   help="kernels/meta-kernel do SPICE: acrescenta o Sol ao .in")
     a = p.parse_args()
 
     info, luas = le_csv(a.csv)
     gm_p = float(info["GM_JUPITER"])
     if info.get("frame") != "EQUADOR_JUPITER":
         print(f"AVISO: frame do CSV = {info.get('frame')}; o nbody precisa do EQUADOR_JUPITER")
+
+    salvar = ""
+    if a.kernels:
+        salvar = "salvar = " + " ".join(n.capitalize() for n, *_ in luas) + "   ! o Sol nao gera .dat"
+        luas = luas + [("SOL", *estado_sol(a.kernels, info))]
 
     linhas = []
     for nome, gm, r, v in luas:
@@ -128,6 +187,7 @@ precisao    = 12
 saida_osculadores = sim
 saida_geometricos = sim
 pasta_saida       = .
+{salvar}
 
 unidade_massa = gm          ! massas abaixo = G*m em km^3/s^2
 

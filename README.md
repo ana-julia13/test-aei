@@ -120,6 +120,20 @@ A conversão estado → elementos é a mesma do `cart_para_osc` do nbody, com
 μ = GM_Júpiter + GM_lua e o GM de Júpiter do próprio SPICE (`gm_planeta` no `.in`),
 então em t = 0 os dois coincidem.
 
+O nbody só tem as forças de Júpiter (J2, J4) e dos corpos do `.in`; a efeméride
+do SPICE tem também o Sol, cuja maré mexe na inclinação de Calisto (período de
+~2170 dias, metade do ano de Júpiter). Para incluir o Sol, passe os kernels:
+
+```bash
+python3 spice_para_in.py saida_elementos/estados_iniciais.csv --kernels /caminho/juice_crema_5_1_150la.tm
+```
+
+O script pega o estado do Sol relativo a Júpiter na época e no frame do CSV e o põe
+na lista de satélites. Visto de Júpiter (o referencial do nbody), o Sol percorre uma
+órbita de a ≈ 5,2 UA e período de 11,86 anos; o termo indireto do nbody faz cada lua
+sentir só a maré solar. A linha `salvar` deixa o Sol fora dos `.dat`. Precisa de um
+SPK planetário (de440s.bsp ou similar) além do `jup365.bsp`.
+
 ```bash
 python3 compara_spice.py                          # todos os NOME_osc.dat que tem CSV do SPICE
 python3 compara_spice.py Thebe Io --tmax 100 --pasta-spice saida_elementos
