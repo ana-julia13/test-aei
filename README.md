@@ -27,6 +27,7 @@ python3 plot_elementos.py    # gráficos de todos os satélites (precisa de nump
 | `plot_elementos.py` | gera 3 imagens por satélite: `NOME_osc.png`, `NOME_geo.png` e `NOME_comparacao.png` |
 | `compara_codigos.py` | compara os osculadores do nbody, do NLSN (`saida3.dat`+`saida4.dat`) e do Mercury (`.aei`) |
 | `compara_spice.py` | compara os osculadores do nbody (`NOME_osc.dat`) com os do SPICE (`elementos_NOME.csv` do `elementos_spice.py`) |
+| `spice_para_in.py` | converte o `estados_iniciais.csv` (cartesiano, do `elementos_spice.py`) num `.in` com elementos osculadores |
 | `angulos_ressonantes.py` | ângulos críticos de uma ressonância p:q de ordem 1 a 4 (tabelas B.4, B.8, B.12, B.16 de Murray & Dermott) |
 
 ## O arquivo `.in`
@@ -106,6 +107,18 @@ semieixo. Salva `ress_P_Q_INTERNO_EXTERNO_geo.png` / `_osc.png`.
 * A energia se conserva em ~1e-14 (1000 dias, 5 satélites).
 
 ## Comparar com o SPICE
+
+Para o nbody partir exatamente do estado do SPICE, gere o `.in` a partir do
+`estados_iniciais.csv` (frame `EQUADOR_JUPITER`):
+
+```bash
+python3 spice_para_in.py saida_elementos/estados_iniciais.csv -o jupiter_spice.in --tempo-final 365 --passo 0.01
+./nbody jupiter_spice.in
+```
+
+A conversão estado → elementos é a mesma do `cart_para_osc` do nbody, com
+μ = GM_Júpiter + GM_lua e o GM de Júpiter do próprio SPICE (`gm_planeta` no `.in`),
+então em t = 0 os dois coincidem.
 
 ```bash
 python3 compara_spice.py                          # todos os NOME_osc.dat que tem CSV do SPICE
