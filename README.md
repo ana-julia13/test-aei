@@ -154,3 +154,8 @@ inclinação deslocados juntos); copie o `(x, y)` que ele imprime para `POLO_DIN
 no `elementos_spice.py` e rode de novo `elementos_spice.py` → `spice_para_in.py` →
 `nbody` → `compara_spice.py`. O valor vai no cabeçalho do `estados_iniciais.csv` e o
 `spice_para_in.py` usa o mesmo frame para o Sol.
+
+Com `--janela 200`, o `polo_spice.py` também ajusta o círculo em janelas de tempo e salva
+`polo_spice_tempo.png` (centro × tempo). Se o centro das luas pequenas do SPICE andar junto
+ao longo dos anos, é o polo de Júpiter se movendo na efeméride (precessão/nutação), que o
+nbody não tem (J2 fixo no eixo z); aí `POLO_DINAMICO` só remove a média.

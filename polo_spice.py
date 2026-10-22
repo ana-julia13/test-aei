@@ -17,9 +17,16 @@ diferentes de zero = polo deslocado. Salva polo_spice.png.
 Precisa de pelo menos uma volta do nodo no periodo do CSV (Metis/Adrastea
 ~45 d, Amalthea ~150 d, Thebe ~300 d; Io bem mais).
 
+Com --janela DIAS, ajusta o circulo em janelas de tempo e salva
+polo_spice_tempo.png com o centro em funcao do tempo. Se o centro das luas
+pequenas do SPICE andar junto ao longo dos anos (e o do nbody ficar em
+zero), e' o polo de Jupiter que se move na efemeride (precessao/nutacao do
+eixo), coisa que o nbody, com o J2 fixo no eixo z, nao tem.
+
 Uso:
     python3 polo_spice.py                              # Metis Adrastea Amalthea Thebe Io
     python3 polo_spice.py Metis Thebe --pasta-spice saida_elementos --pasta-nbody .
+    python3 polo_spice.py Metis Adrastea Amalthea --janela 200
 """
 import argparse
 import os
@@ -52,14 +59,58 @@ def voltas_do_nodo(om):
     return abs(np.ptp(np.unwrap(np.radians(om))))/(2*np.pi)
 
 
+def centros_no_tempo(t, i, om, janela):
+    """Centro do circulo em janelas de 'janela' dias (so' janelas com pelo
+    menos 1 volta do nodo). -> (t_medio, xc, yc)"""
+    saida = []
+    for t0 in np.arange(t[0], t[-1] - janela/2, janela):
+        k = (t >= t0) & (t < t0 + janela)
+        if k.sum() < 10 or voltas_do_nodo(om[k]) < 1:
+            continue
+        xc, yc, _ = ajusta_circulo(*vetor_inclinacao(i[k], om[k]))
+        saida.append((t[k].mean(), xc, yc))
+    return np.array(saida).reshape(-1, 3)
+
+
+def figura_tempo(dados, janela):
+    """dados: lista de (nome, metodo, t, i, om)."""
+    fig, axes = plt.subplots(2, 1, figsize=(11, 7), sharex=True)
+    cores = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+    nomes = list(dict.fromkeys(d[0] for d in dados))
+    for nome, metodo, t, i, om in dados:
+        c = centros_no_tempo(t, i, om, janela)
+        if len(c) == 0:
+            print(f"{nome} {metodo}: nenhuma janela de {janela} d com 1 volta do nodo")
+            continue
+        estilo = "-o" if metodo == "SPICE" else "--"
+        cor = cores[nomes.index(nome) % len(cores)]
+        for ax, k in zip(axes, (1, 2)):
+            ax.plot(c[:, 0], c[:, k], estilo, ms=3, lw=1, color=cor, label=f"{nome} ({metodo})")
+    axes[0].set_ylabel("centro: $i \\sin\\Omega$ (°)")
+    axes[1].set_ylabel("centro: $i \\cos\\Omega$ (°)")
+    axes[1].set_xlabel("Tempo (dias)")
+    for ax in axes:
+        ax.axhline(0.0, color="0.5", lw=0.6)
+        ax.grid(True, linestyle="--", alpha=0.4)
+    axes[0].legend(fontsize=8, ncol=2, frameon=False)
+    fig.suptitle(f"Centro do círculo do vetor inclinação (janelas de {janela:g} dias)\n"
+                 "SPICE: linha cheia   nbody: tracejado", fontsize=12)
+    fig.tight_layout()
+    fig.savefig("polo_spice_tempo.png", dpi=200, bbox_inches="tight")
+    print("Salvo: polo_spice_tempo.png")
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("nomes", nargs="*", default=LUAS, help="luas (padrao: as pequenas e Io)")
     p.add_argument("--pasta-spice", default="saida_elementos", help="pasta dos elementos_NOME.csv")
     p.add_argument("--pasta-nbody", default=".", help="pasta dos NOME_osc.dat")
+    p.add_argument("--janela", type=float, default=0.0,
+                   help="dias: tambem ajusta o centro em janelas de tempo (polo_spice_tempo.png)")
     a = p.parse_args()
 
     resultados = []
+    no_tempo = []
     fig, axes = plt.subplots(1, len(a.nomes), figsize=(4.2*len(a.nomes), 4.6), squeeze=False)
     for ax, nome in zip(axes[0], a.nomes):
         arq_sp = arquivo_spice(nome, a.pasta_spice)
@@ -67,14 +118,15 @@ def main():
             print(f"{nome}: sem CSV do SPICE em {a.pasta_spice}, pulando")
             ax.set_visible(False)
             continue
-        _, el = le_spice(arq_sp)
-        series = {"SPICE": (el[:, 2], el[:, 3])}                 # i, Omega
+        et, el = le_spice(arq_sp)
+        series = {"SPICE": ((et - et[0])/86400.0, el[:, 2], el[:, 3])}    # t, i, Omega
         arq_nb = os.path.join(a.pasta_nbody, f"{nome}_osc.dat")
         if os.path.exists(arq_nb):
             nb = le_nbody(arq_nb)
-            series["nbody"] = (nb[:, 3], nb[:, 5])               # i, om
+            series["nbody"] = (nb[:, 0], nb[:, 3], nb[:, 5])               # t, i, om
 
-        for metodo, (i, om) in series.items():
+        for metodo, (t, i, om) in series.items():
+            no_tempo.append((nome, metodo, t, i, om))
             x, y = vetor_inclinacao(i, om)
             xc, yc, raio = ajusta_circulo(x, y)
             voltas = voltas_do_nodo(om)
@@ -98,6 +150,8 @@ def main():
     fig.tight_layout()
     fig.savefig("polo_spice.png", dpi=200, bbox_inches="tight")
     print("Salvo: polo_spice.png")
+    if a.janela > 0:
+        figura_tempo(no_tempo, a.janela)
 
     if len(resultados) >= 2:
         c = np.array(resultados)
