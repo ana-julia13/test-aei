@@ -13,24 +13,30 @@ com mu = GM_planeta + GM_lua, entao o nbody reconstroi exatamente o estado
 do SPICE em t = 0. O frame do CSV tem que ser o EQUADOR_JUPITER (o nbody
 poe o J2 no eixo z).
 
-Sol (--kernels): o nbody e' jovicentrico, entao visto de Jupiter o Sol
-tambem "orbita" Jupiter (a ~ 5.2 UA, periodo de 11.86 anos). Colocado na
-lista de satelites, o termo indireto do nbody faz Jupiter cair em direcao
-ao Sol e cada lua sente so' a mare solar, como na efemeride real. Com
---kernels o script carrega os kernels (os mesmos do elementos_spice.py; e'
-preciso um SPK planetario, como de440s.bsp, alem do jup365.bsp), pega o
-estado do Sol relativo a Jupiter na epoca do CSV, no mesmo frame, e o
-acrescenta ao .in. A linha "salvar" deixa o Sol fora dos arquivos de saida.
+Sol: o nbody e' jovicentrico, entao visto de Jupiter o Sol tambem
+"orbita" Jupiter (a ~ 5.2 UA, periodo de 11.86 anos). Colocado na lista de
+satelites, o termo indireto do nbody faz Jupiter cair em direcao ao Sol e
+cada lua sente so' a mare solar, como na efemeride real. O script carrega
+os KERNELS abaixo (os mesmos do elementos_spice.py; e' preciso um SPK
+planetario, como de440s.bsp, alem do jup365.bsp), pega o estado do Sol
+relativo a Jupiter na epoca do CSV, no mesmo frame, e o acrescenta ao .in.
+A linha "salvar" deixa o Sol fora dos arquivos de saida.
 
 Uso:
-    python3 spice_para_in.py saida_elementos/estados_iniciais.csv
+    python3 spice_para_in.py                       # le saida_elementos/estados_iniciais.csv
     python3 spice_para_in.py estados_iniciais.csv -o jupiter_spice.in --tempo-final 365 --passo 0.01
-    python3 spice_para_in.py estados_iniciais.csv --kernels /caminho/juice_crema_5_1_150la.tm
+    python3 spice_para_in.py --sem-sol             # so' as luas
 """
 import argparse
 import os
 
 import numpy as np
+
+# ======================= CONFIGURACAO (edite aqui) =======================
+# Os mesmos kernels do elementos_spice.py (meta-kernel .tm ou lista de arquivos).
+KERNELS = [r"/caminho/para/JUICE/kernels/mk/juice_crema_5_1_150la.tm"]
+INCLUIR_SOL = True       # acrescenta o Sol ao .in (False = so' as luas)
+# =========================================================================
 
 
 # ------------------------------------------------------------- conversao
@@ -147,8 +153,9 @@ def main():
     p.add_argument("--planeta", default="Jupiter", help="nome em planetas.dat (raio, J2, J4)")
     p.add_argument("--tempo-final", type=float, default=365.0, help="dias (padrao: 365)")
     p.add_argument("--passo", type=float, default=0.01, help="passo de saida em dias (padrao: 0.01)")
-    p.add_argument("--kernels", nargs="+", metavar="KERNEL",
-                   help="kernels/meta-kernel do SPICE: acrescenta o Sol ao .in")
+    p.add_argument("--kernels", nargs="+", metavar="KERNEL", default=KERNELS,
+                   help="kernels do SPICE para o Sol (padrao: KERNELS no topo do script)")
+    p.add_argument("--sem-sol", action="store_true", help="nao acrescenta o Sol")
     a = p.parse_args()
 
     info, luas = le_csv(a.csv)
@@ -157,7 +164,12 @@ def main():
         print(f"AVISO: frame do CSV = {info.get('frame')}; o nbody precisa do EQUADOR_JUPITER")
 
     salvar = ""
-    if a.kernels:
+    if INCLUIR_SOL and not a.sem_sol:
+        faltando = [k for k in a.kernels if not os.path.exists(k)]
+        if faltando:
+            p.error(f"kernel nao encontrado: {faltando[0]}\n"
+                    "  edite KERNELS no topo do spice_para_in.py (o mesmo caminho do "
+                    "elementos_spice.py) ou use --sem-sol")
         salvar = "salvar = " + " ".join(n.capitalize() for n, *_ in luas) + "   ! o Sol nao gera .dat"
         luas = luas + [("SOL", *estado_sol(a.kernels, info))]
 

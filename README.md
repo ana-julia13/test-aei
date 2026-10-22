@@ -122,13 +122,9 @@ então em t = 0 os dois coincidem.
 
 O nbody só tem as forças de Júpiter (J2, J4) e dos corpos do `.in`; a efeméride
 do SPICE tem também o Sol, cuja maré mexe na inclinação de Calisto (período de
-~2170 dias, metade do ano de Júpiter). Para incluir o Sol, passe os kernels:
-
-```bash
-python3 spice_para_in.py saida_elementos/estados_iniciais.csv --kernels /caminho/juice_crema_5_1_150la.tm
-```
-
-O script pega o estado do Sol relativo a Júpiter na época e no frame do CSV e o põe
+~2170 dias, metade do ano de Júpiter). O `spice_para_in.py` inclui o Sol por padrão: edite `KERNELS` no topo dele
+(o mesmo caminho do `elementos_spice.py`) e rode `python3 spice_para_in.py`
+(ou `--sem-sol` para só as luas). O script pega o estado do Sol relativo a Júpiter na época e no frame do CSV e o põe
 na lista de satélites. Visto de Júpiter (o referencial do nbody), o Sol percorre uma
 órbita de a ≈ 5,2 UA e período de 11,86 anos; o termo indireto do nbody faz cada lua
 sentir só a maré solar. A linha `salvar` deixa o Sol fora dos `.dat`. Precisa de um
