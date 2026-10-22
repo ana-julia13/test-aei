@@ -119,8 +119,9 @@ def carrega_kernels(kernels):
             os.chdir(pasta_atual)
 
 
-def matriz_frame(frame, et):
-    """J2000 -> frame do CSV (mesma construcao do elementos_spice.py)."""
+def matriz_frame(frame, et, correcao=(0.0, 0.0)):
+    """J2000 -> frame do CSV (mesma construcao do elementos_spice.py,
+    inclusive a correcao do polo dinamico)."""
     import spiceypy as spice
     if frame == "J2000":
         return np.eye(3)
@@ -129,7 +130,13 @@ def matriz_frame(frame, et):
     polo = spice.pxform("IAU_JUPITER", "J2000", et)[:, 2].copy()
     nodo = spice.ucrss([0.0, 0.0, 1.0], polo)
     y = spice.ucrss(polo, nodo)
-    return np.array([nodo, y, polo])
+    R = np.array([nodo, y, polo])
+    if correcao != (0.0, 0.0):
+        polo = spice.vhat(R.T @ [correcao[0], correcao[1], 1.0])
+        nodo = spice.ucrss([0.0, 0.0, 1.0], polo)
+        y = spice.ucrss(polo, nodo)
+        R = np.array([nodo, y, polo])
+    return R
 
 
 def estado_sol(kernels, info, centro="JUPITER"):
@@ -138,7 +145,8 @@ def estado_sol(kernels, info, centro="JUPITER"):
     carrega_kernels(kernels)
     et = float(info["et_tdb_s"])
     s, _ = spice.spkezr("SUN", et, "J2000", "NONE", centro)
-    R = matriz_frame(info.get("frame", "EQUADOR_JUPITER"), et)
+    correcao = tuple(float(c) for c in info.get("polo_dinamico", "0,0").split(","))
+    R = matriz_frame(info.get("frame", "EQUADOR_JUPITER"), et, correcao)
     gm = spice.bodvrd("SUN", "GM", 1)[1][0]
     spice.kclear()
     return gm, R @ np.asarray(s[:3]), R @ np.asarray(s[3:])
@@ -187,7 +195,7 @@ def main():
     with open(a.saida, "w") as f:
         f.write(f"""! Gerado por spice_para_in.py a partir de {a.csv}
 ! epoca (t = 0): {info.get('epoca_utc', '?')} UTC   et = {info.get('et_tdb_s', '?')} s TDB
-! frame: {info.get('frame', '?')}   centro: {info.get('centro', '?')}
+! frame: {info.get('frame', '?')}   centro: {info.get('centro', '?')}   polo_dinamico: {info.get('polo_dinamico', '0,0')}
 
 planeta    = {a.planeta}
 gm_planeta = {gm_p:.15g}     ! km^3/s^2, o mesmo GM do SPICE

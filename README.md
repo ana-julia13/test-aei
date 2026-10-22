@@ -26,6 +26,7 @@ python3 plot_elementos.py    # gráficos de todos os satélites (precisa de nump
 | `simulacao.in` | exemplo de entrada (sistema de Júpiter do `ips_mas_pra_aei_jup.f`) |
 | `plot_elementos.py` | gera 3 imagens por satélite: `NOME_osc.png`, `NOME_geo.png` e `NOME_comparacao.png` |
 | `compara_codigos.py` | compara os osculadores do nbody, do NLSN (`saida3.dat`+`saida4.dat`) e do Mercury (`.aei`) |
+| `elementos_spice.py` | elementos osculadores das luas de Júpiter a partir do SPICE (+ `estados_iniciais.csv`); `POLO_DINAMICO` corrige o polo do frame |
 | `compara_spice.py` | compara os osculadores do nbody (`NOME_osc.dat`) com os do SPICE (`elementos_NOME.csv` do `elementos_spice.py`) |
 | `spice_para_in.py` | converte o `estados_iniciais.csv` (cartesiano, do `elementos_spice.py`) num `.in` com elementos osculadores |
 | `polo_spice.py` | testa se o polo IAU do frame `EQUADOR_JUPITER` é o eixo em torno do qual as luas do SPICE precessionam (círculos do vetor inclinação) |
@@ -143,3 +144,13 @@ tempos do nbody). O t = 0 do nbody é a primeira linha do CSV (a época `INICIO`
 use `--epoca-et` se for outra. Use `FRAME = "EQUADOR_JUPITER"` e
 `SOMAR_GM_LUA = True` no `elementos_spice.py`, para ficar no mesmo referencial e
 com o mesmo μ do nbody.
+
+### Polo do frame
+
+O polo IAU (pck) não é exatamente o eixo em torno do qual as luas precessionam no
+`jup365`. Com o polo IAU, a inclinação das luas pequenas no SPICE oscila com o período
+do nodo e a do nbody não. O `polo_spice.py` mede o deslocamento (círculos do vetor
+inclinação deslocados juntos); copie o `(x, y)` que ele imprime para `POLO_DINAMICO`
+no `elementos_spice.py` e rode de novo `elementos_spice.py` → `spice_para_in.py` →
+`nbody` → `compara_spice.py`. O valor vai no cabeçalho do `estados_iniciais.csv` e o
+`spice_para_in.py` usa o mesmo frame para o Sol.
