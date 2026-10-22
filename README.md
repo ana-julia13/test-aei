@@ -28,6 +28,7 @@ python3 plot_elementos.py    # gráficos de todos os satélites (precisa de nump
 | `compara_codigos.py` | compara os osculadores do nbody, do NLSN (`saida3.dat`+`saida4.dat`) e do Mercury (`.aei`) |
 | `compara_spice.py` | compara os osculadores do nbody (`NOME_osc.dat`) com os do SPICE (`elementos_NOME.csv` do `elementos_spice.py`) |
 | `spice_para_in.py` | converte o `estados_iniciais.csv` (cartesiano, do `elementos_spice.py`) num `.in` com elementos osculadores |
+| `polo_spice.py` | testa se o polo IAU do frame `EQUADOR_JUPITER` é o eixo em torno do qual as luas do SPICE precessionam (círculos do vetor inclinação) |
 | `angulos_ressonantes.py` | ângulos críticos de uma ressonância p:q de ordem 1 a 4 (tabelas B.4, B.8, B.12, B.16 de Murray & Dermott) |
 
 ## O arquivo `.in`
