@@ -1,6 +1,6 @@
 !=======================================================================
 !  NBODY - integrador de N corpos para satelites em torno de um planeta
-!          achatado (J2 e J4), com saida de elementos osculadores e
+!          achatado (J2, J4 e J6), com saida de elementos osculadores e
 !          geometricos (Renner & Sicardy 2006).
 !
 !  Uso:   ./nbody                 (le "simulacao.in")
@@ -38,7 +38,7 @@ module sistema
   character(len=64) :: nome_planeta = ''
   real(dp) :: gm_planeta_km = 0.0_dp   ! km^3/s^2
   real(dp) :: raio_km       = 0.0_dp   ! km
-  real(dp) :: j2 = 0.0_dp, j4 = 0.0_dp
+  real(dp) :: j2 = 0.0_dp, j4 = 0.0_dp, j6 = 0.0_dp
   real(dp) :: gmp                      ! G*M_p em R_p^3/dia^2
   ! satelites
   integer :: nsat = 0
@@ -53,12 +53,12 @@ module forcas
   implicit none
 contains
 
-  ! Aceleracao por unidade de massa devida a J2 e J4 do planeta
+  ! Aceleracao por unidade de massa devida a J2, J4 e J6 do planeta
   ! (raio de referencia = 1 nas unidades internas).
   subroutine acel_achatamento(r, a)
     real(dp), intent(in)  :: r(3)
     real(dp), intent(out) :: a(3)
-    real(dp) :: r2, rr, mu2, f2, f4
+    real(dp) :: r2, rr, mu2, f2, f4, f6, g6
 
     r2  = r(1)*r(1) + r(2)*r(2) + r(3)*r(3)
     rr  = sqrt(r2)
@@ -66,10 +66,14 @@ contains
 
     f2 = -1.5_dp*j2*gmp/(r2*r2*rr)                 ! -3/2 J2 GM / r^5
     f4 = 0.625_dp*j4*gmp/(r2*r2*r2*rr)             !  5/8 J4 GM / r^7
+    f6 = 0.4375_dp*j6*gmp/(r2*r2*r2*r2*rr)         !  7/16 J6 GM / r^9
 
-    a(1) = r(1)*( f2*(1.0_dp - 5.0_dp*mu2) + f4*(3.0_dp - 42.0_dp*mu2 + 63.0_dp*mu2*mu2) )
-    a(2) = r(2)*( f2*(1.0_dp - 5.0_dp*mu2) + f4*(3.0_dp - 42.0_dp*mu2 + 63.0_dp*mu2*mu2) )
-    a(3) = r(3)*( f2*(3.0_dp - 5.0_dp*mu2) + f4*(15.0_dp - 70.0_dp*mu2 + 63.0_dp*mu2*mu2) )
+    g6 = -5.0_dp + 135.0_dp*mu2 - 495.0_dp*mu2*mu2 + 429.0_dp*mu2**3
+
+    a(1) = r(1)*( f2*(1.0_dp - 5.0_dp*mu2) + f4*(3.0_dp - 42.0_dp*mu2 + 63.0_dp*mu2*mu2) + f6*g6 )
+    a(2) = r(2)*( f2*(1.0_dp - 5.0_dp*mu2) + f4*(3.0_dp - 42.0_dp*mu2 + 63.0_dp*mu2*mu2) + f6*g6 )
+    a(3) = r(3)*( f2*(3.0_dp - 5.0_dp*mu2) + f4*(15.0_dp - 70.0_dp*mu2 + 63.0_dp*mu2*mu2) + &
+                  f6*(-35.0_dp + 315.0_dp*mu2 - 693.0_dp*mu2*mu2 + 429.0_dp*mu2**3) )
   end subroutine acel_achatamento
 
   ! Equacoes de movimento planetocentricas (inclui termos indiretos e a
@@ -621,7 +625,7 @@ module leitura
   ! elementos iniciais lidos (km, graus) e massas como no arquivo
   real(dp), allocatable :: massa_in(:), el_in(:,:)
   ! valores do planeta dados diretamente no .in (sobrescrevem o banco)
-  real(dp) :: gm_in = -1.0_dp, raio_in = -1.0_dp, j2_in = -999.0_dp, j4_in = -999.0_dp
+  real(dp) :: gm_in = -1.0_dp, raio_in = -1.0_dp, j2_in = -999.0_dp, j4_in = -999.0_dp, j6_in = -999.0_dp
 
 contains
 
@@ -721,6 +725,8 @@ contains
           read(valor, *, iostat=ios) j2_in
         case ('j4')
           read(valor, *, iostat=ios) j4_in
+        case ('j6')
+          read(valor, *, iostat=ios) j6_in
         case default
           call erro('chave desconhecida no .in: "'//trim(chave)//'"')
         end select
@@ -798,11 +804,12 @@ contains
   end subroutine escolhe_saida
 
   ! Procura o planeta em arq_planetas. Formato de cada linha:
-  !   nome[/apelido/...]   GM(km^3/s^2)   R_eq(km)   J2   J4
+  !   nome[/apelido/...]   GM(km^3/s^2)   R_eq(km)   J2   J4   [J6]
+  ! (J6 e' opcional; sem ele, J6 = 0)
   subroutine le_planeta()
     character(len=512) :: linha, s
     character(len=128) :: nomes, alvo, um
-    real(dp) :: vals(4)
+    real(dp) :: vals(5)
     integer  :: u, ios, k
     logical  :: achou
 
@@ -820,7 +827,9 @@ contains
         ! (nao da' para ler o nome com read(*): '/' encerra a leitura)
         k = index(s, ' ')
         nomes = s(1:k-1)
-        read(s(k:), *, iostat=ios) vals
+        vals = 0.0_dp
+        read(s(k:), *, iostat=ios) vals(1:5)
+        if (ios /= 0) read(s(k:), *, iostat=ios) vals(1:4)
         if (ios /= 0) cycle
         nomes = minusculo(nomes)
         ! compara com cada apelido separado por '/'
@@ -843,6 +852,7 @@ contains
           raio_km = vals(2)
           j2 = vals(3)
           j4 = vals(4)
+          j6 = vals(5)
           exit
         end if
       end do
@@ -855,9 +865,10 @@ contains
     if (raio_in > 0.0_dp)    raio_km = raio_in
     if (j2_in   > -998.0_dp) j2 = j2_in
     if (j4_in   > -998.0_dp) j4 = j4_in
+    if (j6_in   > -998.0_dp) j6 = j6_in
 
     if (gm_planeta_km <= 0.0_dp .or. raio_km <= 0.0_dp) &
-      call erro('planeta sem GM/raio: use "planeta = Nome" ou gm_planeta/raio_planeta/j2/j4')
+      call erro('planeta sem GM/raio: use "planeta = Nome" ou gm_planeta/raio_planeta/j2/j4/j6')
     if (len_trim(nome_planeta) == 0) nome_planeta = 'personalizado'
   end subroutine le_planeta
 
@@ -927,6 +938,7 @@ program nbody
   write(*,'(a,f14.4)')  ' Raio equat. (km)   : ', raio_km
   write(*,'(a,es20.12)')' J2                 : ', j2
   write(*,'(a,es20.12)')' J4                 : ', j4
+  write(*,'(a,es20.12)')' J6                 : ', j6
   write(*,'(a,i0)')     ' Satelites          : ', nsat
   do i = 1, nsat
     write(*,'(3x,a16,a,es12.5,a,f14.3,a)') nome_sat(i), '  m/M =', gms(i)/gmp, &
@@ -1021,7 +1033,7 @@ contains
         write(u_osc(j), 100) t, a*raio_km, e, inc*rad2deg, w*rad2deg, om*rad2deg, am*rad2deg
       end if
       if (faz_geo(j)) then
-        call geo(gmp, 1.0_dp, j2, j4, 0.0_dp, st, a, e, inc, w, om, am)
+        call geo(gmp, 1.0_dp, j2, j4, j6, st, a, e, inc, w, om, am)
         write(u_geo(j), 100) t, a*raio_km, e, inc*rad2deg, w*rad2deg, om*rad2deg, am*rad2deg
       end if
     end do
